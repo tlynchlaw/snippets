@@ -1,0 +1,193 @@
+//
+//  MapViewController.swift
+//  Guidebook
+//
+//  Created by THOMAS LYNCH on 1/28/19.
+//  Copyright © 2019 THOMAS LYNCH. All rights reserved.
+//
+
+import UIKit
+import MapKit
+
+class MapViewController: UIViewController {
+
+    @IBOutlet weak var mapView: MKMapView!
+    
+    var locationManager:CLLocationManager?
+    var lastKnownLocation:CLLocation? // if we have a last known location for the user we'll center the map around it
+    
+    var place:Place?
+    
+    override func viewDidLoad() {
+        super.viewDidLoad()
+
+        mapView.showsUserLocation = true // shows the blue dot where the user is if known
+        
+        // Create and configure the location manager
+        locationManager = CLLocationManager()
+        locationManager?.delegate = self
+        
+    }
+    
+    override func viewDidAppear(_ animated: Bool) {
+        
+        // Check for a place and plot the pin
+        if place != nil {
+            plotPin(place!)
+        }
+        
+    }
+
+    func plotPin(_ p:Place) {
+        
+        // Create the pin
+        let pin = MKPointAnnotation()
+        
+        // Set its coordinates
+        pin.coordinate = CLLocationCoordinate2D(latitude: CLLocationDegrees(p.lat.value!), longitude: CLLocationDegrees(p.long.value!))
+        
+        // Set its display name
+        pin.title = p.name!
+        
+        // Add the pin to the map
+        mapView.addAnnotation(pin)
+        
+        // Center the map around the pin
+        mapView.showAnnotations([pin], animated: true)
+    
+    }
+    
+    func showGeolocationError() {
+        
+        // Create the error alert
+        let alert = UIAlertController(title: "Geolocation Failed", message: "Location services are turned off or this app doesn't have permission to use location services.  Check your settings to continue.", preferredStyle: .alert)
+        
+        // Create settings button
+        let settingsAction = UIAlertAction(title: "Settings", style: .default) { (alert) in
+            
+            // Gets a URL to the settings for the phone
+            let url = URL(string: UIApplication.openSettingsURLString)
+            
+            if let url = url {
+                
+                // Open settings
+                UIApplication.shared.open(url, options: [:], completionHandler: nil)
+                
+            }
+            
+        }
+        alert.addAction(settingsAction) // Add the settings button to the alert
+        
+        // Create the cancel button
+        let cancelAction = UIAlertAction(title: "Cancel", style: .cancel, handler: nil)
+        alert.addAction(cancelAction) // Add the cancel button to the alert
+        
+        // Show the alert
+        present(alert, animated: true, completion: nil)
+    }
+    
+    
+    @IBAction func backTapped(_ sender: UIButton) {
+        
+        // Dismiss the mapview controller
+        dismiss(animated: true, completion: nil)
+        
+        
+    }
+    
+    @IBAction func locateTapped(_ sender: UIButton) {
+        
+        // Check the CLLocationManager object to see if location services are on (set to true)
+        if CLLocationManager.locationServicesEnabled() {
+            
+            // Yes, they are on.  Now check whether this app is allowed to use them
+            let status = CLLocationManager.authorizationStatus() // Check for status
+            
+            if status == .denied || status == .restricted {
+                
+                // Show the error popup
+                showGeolocationError()
+            }
+            else if status == .authorizedAlways || status == .authorizedWhenInUse {
+                
+                // Start locating the user
+                locationManager?.startUpdatingLocation()
+                
+                
+            
+                
+                // Center the map around the last known location
+                if let lastKnownLocation = lastKnownLocation { // check if its nil (must use 'if let')
+                    mapView.setCenter(lastKnownLocation.coordinate, animated: true)
+                }
+ 
+                
+                
+            }
+            else if status == .notDetermined {
+                
+                // Ask the user for permission
+                locationManager?.requestWhenInUseAuthorization() // request to allow authorization
+            }
+        }
+        else {
+
+            // Location services turned off, show alert
+            showGeolocationError()
+            
+        }
+    }
+    
+    
+    @IBAction func routeTapped(_ sender: UIButton) {
+        
+        guard place != nil && place!.address != nil else {
+            return
+        }
+        
+        // Replace all spaces in address with +
+        let newAddress = place!.address!.replacingOccurrences(of: " ", with: "+")
+        
+        let url = URL(string: "http://maps.apple.com/?address=\(newAddress)")
+        
+        if let url = url {UIApplication.shared.open(url, options: [:], completionHandler: nil)
+            
+            
+        }
+        
+    }
+    
+}
+
+extension MapViewController: CLLocationManagerDelegate {
+    
+    func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
+        
+        let location = locations.last
+        
+        if let location = location {
+            
+            // Center the map around the location only if this is the first time locating the user
+            if lastKnownLocation == nil {
+                mapView.setCenter(location.coordinate, animated: true)
+            }
+            
+            lastKnownLocation = location
+        }
+    }
+
+    func locationManager(_ manager: CLLocationManager, didChangeAuthorization status: CLAuthorizationStatus) {
+        
+        if status == .denied || status == .restricted {
+            
+            // User chose don't allow
+            showGeolocationError()
+        }
+        else if status == .authorizedWhenInUse || status == .authorizedAlways {
+            
+            // Start locating the user
+            locationManager?.startUpdatingLocation()
+        }
+    }
+
+}
