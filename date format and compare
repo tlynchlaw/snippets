@@ -1,0 +1,25 @@
+import UIKit
+
+let checkDate = "03/31/2019"
+var formattedTime: String = ""
+
+let dateFormatter = DateFormatter()
+dateFormatter.dateFormat = "MM/dd/yyyy"
+
+//let today = dateFormatter.string(from: Date())
+//print ("today is: \(today.description)")
+
+//let formattedToday = dateFormatter.string(from: today)
+
+let today = Date()
+let yesterday = Calendar.current.date(byAdding: .day, value: -1, to: today)
+
+let compareToday = dateFormatter.string(from: today)
+
+let compareYesterday = dateFormatter.string(from: yesterday!)
+
+if compareToday == checkDate {
+    print ("The dates match.")
+} else if compareYesterday == checkDate {
+        print ("Yesterday matches.")
+        }
